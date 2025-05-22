@@ -1,26 +1,27 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    @apply bg-primary text-textPrimary scrollbar-thin scrollbar-track-primary scrollbar-thumb-accent/50;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .heroButton {
+    @apply px-6 py-2 border border-accent/20 rounded-full uppercase text-xs tracking-widest text-textSecondary transition-all hover:border-accent/40 hover:text-accent/40;
+  }
+
+  .sectionTitle {
+    @apply absolute top-24 uppercase tracking-[20px] text-textSecondary text-2xl;
+  }
+
+  .contactInput {
+    @apply outline-none bg-secondary/50 rounded-sm border-b px-6 py-4 border-accent/10 text-textPrimary placeholder-textSecondary transition-all focus:border-accent/40 focus:text-accent hover:border-accent/40;
+  }
 }
