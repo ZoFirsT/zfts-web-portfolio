@@ -86,6 +86,30 @@ export default function BlogAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate required fields with detailed feedback
+    const missingFields = [];
+    if (!currentPost.title) missingFields.push('title');
+    if (!currentPost.content) missingFields.push('content');
+    
+    if (missingFields.length > 0) {
+      toast.error(`Required fields missing: ${missingFields.join(', ')}`);
+      return;
+    }
+    
+    // Generate and sanitize slug
+    const newSlug = currentPost.slug || currentPost.title;
+    const sanitizedSlug = newSlug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    
+    const postToSave = {
+      ...currentPost,
+      slug: sanitizedSlug
+    };
+    
     setIsSaving(true);
 
     try {
@@ -93,16 +117,44 @@ export default function BlogAdmin() {
       const method = isEditing ? 'PUT' : 'POST';
       const url = isEditing ? `/api/posts/${currentPost.slug}` : '/api/posts';
       
+      console.log('Saving post:', method, url, postToSave);
+      
       const response = await fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(currentPost),
+        body: JSON.stringify(postToSave),
       });
 
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Error parsing response:', jsonError);
+        throw new Error('Failed to parse server response');
+      }
+
       if (!response.ok) {
-        throw new Error('Failed to save post');
+        console.error('Failed to save post:', {
+          status: response.status,
+          error: data?.error,
+          details: data?.details,
+          method,
+          url,
+          postSlug: postToSave.slug
+        });
+        
+        // Handle specific error cases
+        if (response.status === 409) {
+          throw new Error('A post with this slug already exists');
+        } else if (response.status === 401) {
+          throw new Error('You are not authorized. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(data?.error || 'Invalid post data');
+        }
+        
+        throw new Error(data?.error || `Failed to ${isEditing ? 'update' : 'create'} post`);
       }
 
       await fetchPosts();
@@ -127,44 +179,77 @@ export default function BlogAdmin() {
     }
   };
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: File): Promise<string> => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-
+      
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-
-      if (!response.ok) throw new Error('Upload failed');
-
-      const { url } = await response.json();
-      setCurrentPost({ ...currentPost, coverImage: url });
-      toast.success('Image uploaded successfully');
+      
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+      
+      const data = await response.json();
+      return data.url;
     } catch (error) {
       console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+      throw error;
+    }
+  };
+
+  const handleImageDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please drop an image file');
+      return;
+    }
+
+    try {
+      const imageUrl = await handleImageUpload(file);
+      // Insert image URL into content at cursor position or at the end
+      const imageMarkdown = `\n![${file.name}](${imageUrl})\n`;
+      setCurrentPost(prev => ({
+        ...prev,
+        content: prev.content + imageMarkdown
+      }));
+      toast.success('Image uploaded successfully');
+    } catch (error) {
       toast.error('Failed to upload image');
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+  const handleCoverImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const imageUrl = await handleImageUpload(file);
+      setCurrentPost(prev => ({
+        ...prev,
+        coverImage: imageUrl
+      }));
+      toast.success('Cover image uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload cover image');
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
     setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
     setIsDragging(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      await handleImageUpload(file);
-    }
   };
 
   const generateSlug = (title: string) => {

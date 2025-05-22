@@ -9,6 +9,8 @@ import {
   FaBold, FaItalic, FaListUl, FaListOl, FaQuoteLeft, 
   FaLink, FaImage, FaUndo, FaRedo 
 } from 'react-icons/fa';
+import { useState } from 'react';
+import { toast } from 'react-hot-toast';
 
 interface RichTextEditorProps {
   content: string;
@@ -17,6 +19,8 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -38,9 +42,11 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     return null;
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -55,13 +61,56 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
 
       const { url } = await response.json();
       editor.chain().focus().setImage({ src: url }).run();
+      toast.success('Image uploaded successfully');
     } catch (error) {
       console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
+    }
+  };
+
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await handleImageUpload(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await handleImageUpload(file);
     }
   };
 
   return (
-    <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+    <div 
+      className={`border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden relative ${
+        isDragging ? 'ring-2 ring-blue-500' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center backdrop-blur-sm z-10">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg border border-blue-500">
+            <p className="text-blue-500 font-medium">Drop image here</p>
+          </div>
+        </div>
+      )}
       <div className="bg-white dark:bg-gray-800 p-3 border-b border-gray-300 dark:border-gray-600">
         <div className="flex flex-wrap gap-2">
           <button
@@ -129,11 +178,13 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
               type="file"
               className="hidden"
               accept="image/*"
-              onChange={handleImageUpload}
+              onChange={handleFileInputChange}
             />
             <div
-              className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
-              title="Add Image"
+              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
+                isDragging ? 'bg-blue-100 dark:bg-blue-900/20' : ''
+              }`}
+              title="Add Image (Click or Drag & Drop)"
             >
               <FaImage />
             </div>
@@ -159,7 +210,9 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       </div>
       <EditorContent 
         editor={editor} 
-        className="prose dark:prose-invert max-w-none p-4 min-h-[200px] focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+        className={`prose dark:prose-invert max-w-none p-4 min-h-[200px] focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
+          isDragging ? 'opacity-50' : ''
+        }`}
       />
     </div>
   );

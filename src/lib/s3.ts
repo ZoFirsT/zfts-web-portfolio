@@ -19,7 +19,7 @@ interface UploadResult {
   height: number;
 }
 
-export async function uploadFileToS3(file: any): Promise<UploadResult> {
+export async function uploadFileToS3(file: any, customKey?: string): Promise<UploadResult> {
   // Validate file size
   const fileBuffer = file.buffer || await file.arrayBuffer();
   if (fileBuffer.byteLength > MAX_FILE_SIZE) {
@@ -49,11 +49,12 @@ export async function uploadFileToS3(file: any): Promise<UploadResult> {
       .webp({ quality: 80 })
       .toBuffer();
 
-    const filename = `${uuidv4()}.webp`;
+    // Determine S3 key and file URL
+    const key = customKey || `blog-images/${uuidv4()}.webp`;
     
     const params = {
       Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: `blog-images/${filename}`,
+      Key: key,
       Body: processedBuffer,
       ContentType: 'image/webp',
       CacheControl: 'public, max-age=31536000', // Cache for 1 year
@@ -64,8 +65,11 @@ export async function uploadFileToS3(file: any): Promise<UploadResult> {
     // Get final dimensions
     const finalMetadata = await sharp(processedBuffer).metadata();
     
+    // Construct the URL based on region and bucket
+    const url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'ap-southeast-1'}.amazonaws.com/${key}`;
+    
     return {
-      url: `https://${process.env.AWS_S3_BUCKET_NAME}.s3.amazonaws.com/blog-images/${filename}`,
+      url,
       width: finalMetadata.width || 0,
       height: finalMetadata.height || 0
     };

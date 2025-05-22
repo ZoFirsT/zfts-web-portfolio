@@ -29,7 +29,28 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export async function connectToDatabase() {
-  const client = await clientPromise;
-  const db = client.db(process.env.MONGODB_DB);
-  return { db, client };
+  try {
+    if (!process.env.MONGODB_DB) {
+      throw new Error('MONGODB_DB environment variable is not defined');
+    }
+
+    const client = await clientPromise;
+    const db = client.db(process.env.MONGODB_DB);
+    
+    // Verify the connection is alive
+    await db.command({ ping: 1 });
+    console.log("Successfully connected to MongoDB:", {
+      database: process.env.MONGODB_DB,
+      isConnected: client.connect() !== null
+    });
+    
+    return { db, client };
+  } catch (error) {
+    console.error("Failed to connect to MongoDB:", {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      database: process.env.MONGODB_DB
+    });
+    throw error;
+  }
 }

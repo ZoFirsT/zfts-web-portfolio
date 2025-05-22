@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "Thanatcha Saleekongchai Portfolio",
     images: [
       {
-        url: "/profile-image.jpeg",
+        url: "/logoMain.png",
         width: 800,
         height: 600,
         alt: "Thanatcha Saleekongchai",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Thanatcha Saleekongchai | Full Stack Developer & Cloud DevOps Engineer",
     description: "Experienced Full Stack Developer and Cloud DevOps Engineer specializing in web development, cloud architecture, and DevOps practices.",
-    images: ["/profile-image.jpeg"],
+    images: ["/logoMain.png"],
     creator: "@thanatchadev",
   },
   icons: {

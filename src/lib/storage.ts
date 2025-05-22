@@ -14,7 +14,7 @@ export interface UploadResult {
   height: number;
 }
 
-export async function uploadLocal(file: any): Promise<UploadResult> {
+export async function uploadLocal(file: any, customPath?: string): Promise<UploadResult> {
   // Validate file size
   const fileBuffer = file.buffer || await file.arrayBuffer();
   if (fileBuffer.byteLength > MAX_FILE_SIZE) {
@@ -27,11 +27,6 @@ export async function uploadLocal(file: any): Promise<UploadResult> {
   }
 
   try {
-    // Create upload directory if it doesn't exist
-    if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    }
-
     // Process image with Sharp
     const image = sharp(Buffer.from(fileBuffer));
     const metadata = await image.metadata();
@@ -49,9 +44,23 @@ export async function uploadLocal(file: any): Promise<UploadResult> {
       .webp({ quality: 80 })
       .toBuffer();
 
-    // Generate unique filename
-    const filename = `${uuidv4()}.webp`;
-    const filePath = path.join(UPLOAD_DIR, filename);
+    // Determine file path and create necessary directories
+    let filePath, urlPath;
+    if (customPath) {
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      filePath = path.join(uploadDir, customPath);
+      // Create directory structure if it doesn't exist
+      await mkdir(path.dirname(filePath), { recursive: true });
+      urlPath = `/uploads/${customPath}`;
+    } else {
+      // Create default upload directory if it doesn't exist
+      if (!existsSync(UPLOAD_DIR)) {
+        await mkdir(UPLOAD_DIR, { recursive: true });
+      }
+      const filename = `${uuidv4()}.webp`;
+      filePath = path.join(UPLOAD_DIR, filename);
+      urlPath = `/uploads/blog-images/${filename}`;
+    }
     
     // Save file
     await writeFile(filePath, processedBuffer);
@@ -60,7 +69,7 @@ export async function uploadLocal(file: any): Promise<UploadResult> {
     const finalMetadata = await sharp(processedBuffer).metadata();
     
     return {
-      url: `/uploads/blog-images/${filename}`,
+      url: urlPath,
       width: finalMetadata.width || 0,
       height: finalMetadata.height || 0
     };

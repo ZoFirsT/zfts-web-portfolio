@@ -25,13 +25,40 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const token = request.cookies.get('auth-token');
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { db } = await connectToDatabase();
     const data = await request.json();
+    
+    // Validate required fields
+    if (!data.title || !data.content || !data.slug) {
+      return NextResponse.json(
+        { error: 'Missing required fields: title, content, and slug are required' },
+        { status: 400 }
+      );
+    }
+    
+    // Check for duplicate slug
+    const existingPost = await db.collection('posts').findOne({ slug: data.slug });
+    if (existingPost) {
+      return NextResponse.json(
+        { error: 'A post with this slug already exists' },
+        { status: 409 }
+      );
+    }
     
     const post = {
       ...data,
       date: new Date(),
-      lastModified: new Date()
+      lastModified: new Date(),
+      slug: data.slug.toLowerCase().trim()
     };
     
     const result = await db.collection('posts').insertOne(post);
