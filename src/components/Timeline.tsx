@@ -20,6 +20,13 @@ const timelineData: TimelineItem[] = [
     type: "work"
   },
   {
+    title: "Developer",
+    organization: "ZITS Dev",
+    date: "May 2024 - Present",
+    description: "Building full-stack applications and integrating cloud-native services. Focused on performance optimization, container orchestration, and delivering scalable backend systems tailored to client needs.",
+    type: "work"
+  },
+  {
     title: "Thailand Cyber Top Talent 2023 Finalist",
     organization: "National Cyber Security Agency (NCSA)",
     date: "Oct 2023",
