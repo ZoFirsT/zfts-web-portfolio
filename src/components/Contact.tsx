@@ -109,11 +109,29 @@ export default function Contact() {
           />
 
           {status === 'error' && (
-            <p className="text-red-500 text-sm">{errorMessage}</p>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-3 rounded bg-red-500/10 border border-red-400/30 text-red-400 text-sm mb-4 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {errorMessage}
+            </motion.div>
           )}
           
           {status === 'success' && (
-            <p className="text-green-500 text-sm">Message sent successfully! I'll get back to you soon.</p>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="p-3 rounded bg-green-500/10 border border-green-400/30 text-green-400 text-sm mb-4 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Message sent successfully! I'll get back to you soon.
+            </motion.div>
           )}
 
           <button

@@ -163,6 +163,20 @@ const Blog = () => {
               </motion.article>
             ))
           )}
+          
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="mt-8 text-center"
+          >
+            <Link 
+              href="/blog" 
+              className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-black rounded-lg hover:bg-accent/80 transition-colors duration-200"
+            >
+              View All Articles
+            </Link>
+          </motion.div>
         </div>
       </div>
     </motion.div>

@@ -3,7 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaEye, FaSpinner, FaTimes, FaImage } from 'react-icons/fa';
+import { toast } from 'react-hot-toast';
+import Link from 'next/link';
+import RichTextEditor from './RichTextEditor';
 
 type BlogPost = {
   _id?: string;
@@ -21,9 +24,8 @@ export default function BlogAdmin() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [currentPost, setCurrentPost] = useState<BlogPost>({
     title: '',
     excerpt: '',
@@ -34,364 +36,372 @@ export default function BlogAdmin() {
     coverImage: '',
     published: false
   });
+  const [previewMode, setPreviewMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
-    const messages = [
-      '> Initializing admin interface...',
-      '> Authenticating session...',
-      '> Loading blog management system...',
-      '> Fetching all articles...'
-    ];
-
-    const typeMessage = async (index: number) => {
-      if (index < messages.length) {
-        setCommandHistory(prev => [...prev, messages[index]]);
-        setTimeout(() => typeMessage(index + 1), 500);
-      }
-    };
-
-    typeMessage(0);
-
-    setTimeout(fetchPosts, messages.length * 500);
+    fetchPosts();
   }, []);
 
   const fetchPosts = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/posts');
       const data = await response.json();
       setPosts(data);
-      setCommandHistory(prev => [
-        ...prev,
-        `> Found ${data.length} articles`,
-        '> Ready for management'
-      ]);
     } catch (error) {
       console.error('Error fetching posts:', error);
-      setCommandHistory(prev => [
-        ...prev,
-        '> Error: Failed to fetch articles',
-        '> Please try again or contact support'
-      ]);
+      toast.error('Failed to fetch posts');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+  };
+
+  const handleEdit = (post: BlogPost) => {
+    setCurrentPost(post);
+    setIsEditing(true);
+  };
+
+  const handleDelete = async (slug: string) => {
+    if (!slug || !window.confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/posts/${slug}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setPosts(posts.filter(post => post.slug !== slug));
+        toast.success('Post deleted successfully');
+      } else {
+        throw new Error('Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error('Failed to delete post');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
+
     try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
+      const isEditing = posts.some(post => post.slug === currentPost.slug);
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `/api/posts/${currentPost.slug}` : '/api/posts';
+      
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(currentPost),
       });
 
-      if (response.ok) {
-        setIsEditing(false);
-        setCurrentPost({
-          title: '',
-          excerpt: '',
-          content: '',
-          date: new Date().toISOString(),
-          readTime: '5 min read',
-          slug: '',
-          coverImage: '',
-          published: false
-        });
-        fetchPosts();
+      if (!response.ok) {
+        throw new Error('Failed to save post');
       }
+
+      await fetchPosts();
+      setIsEditing(false);
+      toast.success(isEditing ? 'Post updated successfully' : 'Post created successfully');
+      
+      setCurrentPost({
+        title: '',
+        excerpt: '',
+        content: '',
+        date: new Date().toISOString(),
+        readTime: '5 min read',
+        slug: '',
+        coverImage: '',
+        published: false
+      });
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Error saving post:', error);
+      toast.error('Failed to save post');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
-    
+  const handleImageUpload = async (file: File) => {
     try {
-      const response = await fetch(`/api/posts/${id}`, {
-        method: 'DELETE',
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
       });
 
-      if (response.ok) {
-        fetchPosts();
-      }
+      if (!response.ok) throw new Error('Upload failed');
+
+      const { url } = await response.json();
+      setCurrentPost({ ...currentPost, coverImage: url });
+      toast.success('Image uploaded successfully');
     } catch (error) {
-      console.error('Error deleting post:', error);
+      console.error('Error uploading image:', error);
+      toast.error('Failed to upload image');
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      await handleImageUpload(file);
+    }
+  };
+
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen p-8 font-mono"
-    >
-      <div className="max-w-6xl mx-auto bg-secondary/30 p-4 rounded-lg border border-accent/20 shadow-lg backdrop-blur-sm">
-        {/* Terminal Header */}
-        <motion.div 
-          className="flex items-center gap-2 mb-4 pb-2 border-b border-accent/20"
-          initial={{ y: -20 }}
-          animate={{ y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <div className="w-3 h-3 rounded-full bg-yellow-500" />
-          <div className="w-3 h-3 rounded-full bg-green-500" />
-          <span className="ml-2 text-textSecondary text-sm">zfts-admin -- Blog Management</span>
+    <div className="w-full p-4 md:p-6 bg-white dark:bg-gray-900">
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white">Blog Management</h1>
+        <div className="flex flex-wrap gap-4 mb-6">
           <button
             onClick={() => setIsEditing(true)}
-            className="ml-auto text-accent hover:text-accent/80 transition-colors duration-200 flex items-center gap-2"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            <FaPlus className="w-4 h-4" /> new_post.md
+            <FaPlus /> New Post
           </button>
-        </motion.div>
-
-        {/* Terminal Output - Command History */}
-        <div className="h-[20vh] overflow-y-auto space-y-2 mb-4 p-2 bg-secondary/20 rounded">
-          <AnimatePresence>
-            {commandHistory.map((line, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.2 }}
-                className={`${
-                  line.includes('Error') ? 'text-red-400' : 
-                  line.includes('Found') || line.includes('Ready') ? 'text-green-400' : 
-                  'text-textSecondary'
-                }`}
-              >
-                {line}
-              </motion.div>
-            ))}
-          </AnimatePresence>
         </div>
+      </div>
 
-        {isEditing && (
-          <motion.form
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            onSubmit={handleSubmit}
-            className="mb-6 p-4 bg-secondary/20 rounded-lg border border-accent/20"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-accent mb-1">Title:</label>
-                  <input
-                    type="text"
-                    value={currentPost.title}
-                    onChange={(e) => setCurrentPost({ ...currentPost, title: e.target.value })}
-                    className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-textPrimary font-mono focus:border-accent outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-accent mb-1">Excerpt:</label>
-                  <textarea
-                    value={currentPost.excerpt}
-                    onChange={(e) => setCurrentPost({ ...currentPost, excerpt: e.target.value })}
-                    className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-textPrimary font-mono focus:border-accent outline-none"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-accent mb-1">Slug:</label>
-                  <input
-                    type="text"
-                    value={currentPost.slug}
-                    onChange={(e) => setCurrentPost({ ...currentPost, slug: e.target.value })}
-                    className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-textPrimary font-mono focus:border-accent outline-none"
-                  />
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-accent mb-1">Content:</label>
-                  <textarea
-                    value={currentPost.content}
-                    onChange={(e) => setCurrentPost({ ...currentPost, content: e.target.value })}
-                    className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-textPrimary font-mono focus:border-accent outline-none"
-                    rows={8}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm text-accent mb-1">Cover Image:</label>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 space-y-2">
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,image/gif"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // Reset progress
-                            setUploadProgress(0);
-                            setCommandHistory(prev => [
-                              ...prev,
-                              `> Uploading image: ${file.name}`,
-                              '> Processing and optimizing image...'
-                            ]);
-                            
-                            const formData = new FormData();
-                            formData.append('file', file);
-
-                            try {
-                              const response = await fetch('/api/upload', {
-                                method: 'POST',
-                                body: formData,
-                              });
-
-                              if (!response.ok) {
-                                const error = await response.json();
-                                throw new Error(error.error || 'Upload failed');
-                              }
-                              
-                              const data = await response.json();
-                              setCurrentPost({ ...currentPost, coverImage: data.url });
-                              setCommandHistory(prev => [
-                                ...prev,
-                                `> Image optimized to ${data.width}x${data.height}`,
-                                '> ' + data.message
-                              ]);
-                              setUploadProgress(100);
-
-                              // Reset progress after a delay
-                              setTimeout(() => setUploadProgress(0), 2000);
-                            } catch (error: any) {
-                              console.error('Upload error:', error);
-                              setCommandHistory(prev => [
-                                ...prev,
-                                `> Error: ${error.message || 'Failed to upload image'}`,
-                                '> Please check the file and try again'
-                              ]);
-                              setUploadProgress(0);
-                            }
-                          }
-                        }}
-                        className="hidden"
-                        id="cover-image-input"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById('cover-image-input')?.click()}
-                        className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-accent hover:bg-accent/10 transition-colors duration-200 text-sm"
-                      >
-                        Upload Image
-                      </button>
-                      {uploadProgress > 0 && (
-                        <div className="relative h-1 bg-secondary/30 rounded overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${uploadProgress}%` }}
-                            transition={{ duration: 0.3 }}
-                            className="absolute inset-y-0 left-0 bg-accent/50"
-                          />
-                        </div>
-                      )}
-                      <p className="text-xs text-textSecondary mt-1">
-                        Max size: 5MB. Supported formats: JPEG, PNG, WebP, GIF
-                      </p>
-                    </div>
-                    {currentPost.coverImage && (
-                      <img
-                        src={currentPost.coverImage}
-                        alt="Cover preview"
-                        className="w-20 h-20 object-cover rounded"
-                      />
-                    )}
-                  </div>
-                  {currentPost.coverImage && (
-                    <input
-                      type="text"
-                      value={currentPost.coverImage}
-                      onChange={(e) => setCurrentPost({ ...currentPost, coverImage: e.target.value })}
-                      className="w-full p-2 bg-secondary/30 border border-accent/20 rounded text-textPrimary font-mono focus:border-accent outline-none text-sm"
-                      placeholder="Image URL"
-                    />
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 text-accent">
-                    <input
-                      type="checkbox"
-                      checked={currentPost.published}
-                      onChange={(e) => setCurrentPost({ ...currentPost, published: e.target.checked })}
-                      className="rounded border-accent text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm">Published</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-4 mt-6 border-t border-accent/20 pt-4">
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 bg-secondary/50 text-textSecondary border border-accent/20 rounded hover:bg-secondary/70 transition-colors duration-200"
-              >
-                ESC
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-accent/20 text-accent border border-accent/20 rounded hover:bg-accent/30 transition-colors duration-200"
-              >
-                :w
-              </button>
-            </div>
-          </motion.form>
-        )}
-
-        <div className="space-y-4">
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <FaSpinner className="animate-spin text-4xl text-blue-600" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {posts.map((post) => (
             <motion.div
-              key={post._id}
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="p-4 bg-secondary/20 rounded-lg border border-accent/20 hover:bg-secondary/30 transition-all duration-200"
+              key={post.slug}
+              layout
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-accent">{">"}</span>
-                  <h3 className="font-semibold text-textPrimary">{post.title}</h3>
-                  {post.published ? (
-                    <span className="text-green-400 text-sm">(published)</span>
-                  ) : (
-                    <span className="text-yellow-400 text-sm">(draft)</span>
+              {post.coverImage && (
+                <div className="relative h-48">
+                  <img
+                    src={post.coverImage}
+                    alt={post.title}
+                    className="w-full h-full object-cover"
+                  />
+                  {!post.published && (
+                    <div className="absolute top-2 right-2 bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-sm">
+                      Draft
+                    </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      setCurrentPost(post);
-                      setIsEditing(true);
-                    }}
-                    className="p-2 text-accent hover:text-accent/80 transition-colors duration-200"
-                  >
-                    <FaEdit className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => post._id && handleDelete(post._id)}
-                    className="p-2 text-red-400 hover:text-red-500 transition-colors duration-200"
-                  >
-                    <FaTrash className="w-4 h-4" />
-                  </button>
+              )}
+              <div className="p-5">
+                <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{post.title}</h3>
+                <p className="text-gray-700 dark:text-gray-300 text-base mb-4 line-clamp-2">
+                  {post.excerpt}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {new Date(post.date).toLocaleDateString()}
+                  </span>
+                  <div className="flex gap-3">
+                    <Link 
+                      href={`/blog/${post.slug}`}
+                      target="_blank"
+                      className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                    >
+                      <FaEye />
+                    </Link>
+                    <button
+                      onClick={() => handleEdit(post)}
+                      className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(post.slug)}
+                      className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="ml-6 mt-2 text-sm text-textSecondary">
-                {new Date(post.date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
               </div>
             </motion.div>
           ))}
         </div>
-      </div>
-    </motion.div>
+      )}
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {isEditing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border dark:border-gray-700"
+            >
+              <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b dark:border-gray-700 p-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  {posts.some(p => p.slug === currentPost.slug) ? 'Edit Post' : 'New Post'}
+                </h2>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewMode(!previewMode)}
+                    className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                      previewMode
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                    }`}
+                  >
+                    {previewMode ? 'Edit' : 'Preview'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <FaTimes size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                {previewMode ? (
+                  <div className="prose dark:prose-invert max-w-none">
+                    {currentPost.coverImage && (
+                      <img
+                        src={currentPost.coverImage}
+                        alt={currentPost.title}
+                        className="w-full h-64 object-cover rounded-lg mb-6"
+                      />
+                    )}
+                    <h1 className="text-gray-900 dark:text-white">{currentPost.title}</h1>
+                    <p className="text-gray-700 dark:text-gray-300">{currentPost.excerpt}</p>
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: currentPost.content }}
+                      className="text-gray-800 dark:text-gray-200"
+                    />
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Title</label>
+                        <input
+                          type="text"
+                          value={currentPost.title}
+                          onChange={(e) => {
+                            const title = e.target.value;
+                            setCurrentPost({
+                              ...currentPost,
+                              title,
+                              slug: generateSlug(title)
+                            });
+                          }}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
+                          placeholder="Enter post title..."
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Excerpt</label>
+                        <textarea
+                          value={currentPost.excerpt}
+                          onChange={(e) => setCurrentPost({ ...currentPost, excerpt: e.target.value })}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300"
+                          rows={2}
+                          placeholder="Brief description of your post..."
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Content</label>
+                        <RichTextEditor
+                          content={currentPost.content}
+                          onChange={(content) => setCurrentPost({ ...currentPost, content })}
+                          placeholder="Write your post content here..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-2 text-gray-800 dark:text-gray-200">Slug</label>
+                        <input
+                          type="text"
+                          value={currentPost.slug}
+                          onChange={(e) => setCurrentPost({ ...currentPost, slug: e.target.value })}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={currentPost.published}
+                            onChange={(e) => setCurrentPost({ ...currentPost, published: e.target.checked })}
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Published</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t dark:border-gray-700">
+                      <div className="flex justify-end gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          className="px-6 py-2.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSaving}
+                          className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
+                        >
+                          {isSaving && <FaSpinner className="animate-spin" />}
+                          {isSaving ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

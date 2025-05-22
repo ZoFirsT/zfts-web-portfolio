@@ -28,7 +28,7 @@ const Footer = () => {
           {/* Navigation */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:gap-16 mb-8 md:mb-0">
             <div>
-              <h4 className="text-lg font-semibold text-textPrimary mb-4">Links</h4>
+              <h4 className="text-lg font-semibold text-textPrimary mb-4">Main Pages</h4>
               <ul className="space-y-2">
                 <li>
                   <Link href="#hero" className="hover:text-accent transition-colors duration-300">
@@ -58,6 +58,37 @@ const Footer = () => {
                 <li>
                   <Link href="#contact" className="hover:text-accent transition-colors duration-300">
                     Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold text-textPrimary mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li>
+                  <Link href="#blog" className="hover:text-accent transition-colors duration-300">
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#security-tools" className="hover:text-accent transition-colors duration-300">
+                    Security Tools
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/opensrc/blacklist" className="hover:text-accent transition-colors duration-300">
+                    IP Blacklist API
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="hover:text-accent transition-colors duration-300">
+                    Blog Archive
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#timeline" className="hover:text-accent transition-colors duration-300">
+                    Timeline
                   </Link>
                 </li>
               </ul>
@@ -103,7 +134,18 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-accent/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p>© {currentYear} zFts.Site. All rights reserved.</p>
+          <div className="flex flex-col md:flex-row items-center gap-2">
+            <p>© {currentYear} zFts.Site. All rights reserved.</p>
+            <div className="flex gap-4 items-center">
+              <Link href="/login" className="text-xs hover:text-accent transition-colors duration-300 opacity-50 hover:opacity-100">
+                Admin Login
+              </Link>
+              <span className="hidden md:inline text-accent/50">|</span>
+              <Link href="/opensrc/blacklist" className="text-xs hover:text-accent transition-colors duration-300">
+                API Docs
+              </Link>
+            </div>
+          </div>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <a 
               href="https://github.com/ZoFirsT" 

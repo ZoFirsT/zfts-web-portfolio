@@ -5,6 +5,7 @@ module.exports = {
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -23,6 +24,47 @@ module.exports = {
           '0%': { opacity: 0 },
           '100%': { opacity: 1 }
         }
+      },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            color: 'inherit',
+            a: {
+              color: '#3b82f6',
+              '&:hover': {
+                color: '#2563eb',
+              },
+            },
+            blockquote: {
+              borderLeftColor: '#e5e7eb',
+              color: 'inherit',
+            },
+            'h1, h2, h3, h4': {
+              color: 'inherit',
+            },
+            hr: {
+              borderColor: '#e5e7eb',
+            },
+            'ol > li::before': {
+              color: 'inherit',
+            },
+            'ul > li::before': {
+              backgroundColor: 'currentColor',
+            },
+            code: {
+              color: 'inherit',
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              color: 'inherit',
+            },
+            pre: {
+              backgroundColor: '#1f2937',
+              color: '#e5e7eb',
+            },
+          },
+        },
       },
     },
   },

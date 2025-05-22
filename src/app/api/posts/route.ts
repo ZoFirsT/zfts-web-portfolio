@@ -35,8 +35,9 @@ export async function POST(request: NextRequest) {
     };
     
     const result = await db.collection('posts').insertOne(post);
+    const createdPost = await db.collection('posts').findOne({ _id: result.insertedId });
     
-    return NextResponse.json(result);
+    return NextResponse.json(createdPost);
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to create blog post' },

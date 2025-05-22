@@ -59,7 +59,7 @@ export default function Login() {
           '> Redirecting to admin interface...'
         ]);
         await new Promise(resolve => setTimeout(resolve, 1500));
-        router.push('/admin/blog');
+        router.push('/admin');
       } else {
         setError(data.error || 'Authentication failed');
         setCommandHistory(prev => [
