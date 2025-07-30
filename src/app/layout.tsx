@@ -33,13 +33,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://zfts-web-portfolio.vercel.app/",
+    url: "https://www.zfts.site/",
     title: "Thanatcha Saleekongchai | Full Stack Developer & Cloud DevOps Engineer",
     description: "Experienced Full Stack Developer and Cloud DevOps Engineer specializing in web development, cloud architecture, and DevOps practices.",
     siteName: "Thanatcha Saleekongchai Portfolio",
     images: [
       {
-        url: "/logoMain.png",
+        url: "https://cdn.zfts.site/api/cdn/ZoFirsT/zfts.site/be877c7c-29f7-4532-9218-a647c4ca6245.jpeg",
         width: 800,
         height: 600,
         alt: "Thanatcha Saleekongchai",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Thanatcha Saleekongchai | Full Stack Developer & Cloud DevOps Engineer",
     description: "Experienced Full Stack Developer and Cloud DevOps Engineer specializing in web development, cloud architecture, and DevOps practices.",
-    images: ["/logoMain.png"],
+    images: ["https://cdn.zfts.site/api/cdn/ZoFirsT/zfts.site/be877c7c-29f7-4532-9218-a647c4ca6245.jpeg"],
     creator: "@thanatchadev",
   },
   icons: {

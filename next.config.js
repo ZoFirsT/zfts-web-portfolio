@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost', 'www.zfts.site', 'zfts.site'],
+    domains: ['localhost', 'www.zfts.site', 'zfts.site', 'cdn.zfts.site'],
   },
   webpack: (config) => {
     config.externals = [...(config.externals || []), { canvas: 'canvas' }];
