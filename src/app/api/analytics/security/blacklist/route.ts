@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { jwtVerify } from 'jose';
 
+// Mark this route as dynamic to fix the build error
+export const dynamic = 'force-dynamic';
+
 // List the most recent 3 months of attacks
 const LOOKBACK_TIME = 90 * 24 * 60 * 60 * 1000; // 90 days in milliseconds
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -8,6 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://zfts-web-portfolio.vercel.app'),
   title: "Thanatcha Saleekongchai | Full Stack Developer & Cloud DevOps Engineer",
   description: "Experienced Full Stack Developer and Cloud DevOps Engineer specializing in web development, cloud architecture, and DevOps practices. View my portfolio, projects, and technical expertise.",
   keywords: "Full Stack Developer, Cloud DevOps Engineer, Web Development, React, TypeScript, Node.js, AWS, Docker, Kubernetes",
@@ -58,6 +59,9 @@ export const metadata: Metadata = {
     apple: "/favicon.ico",
   },
   manifest: "/site.webmanifest",
+};
+
+export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },

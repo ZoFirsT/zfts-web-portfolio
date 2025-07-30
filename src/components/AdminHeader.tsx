@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { FaHome, FaNewspaper, FaChartBar, FaShieldAlt, FaBars, FaSignOutAlt, FaTimes } from 'react-icons/fa';
+import { FaHome, FaNewspaper, FaChartBar, FaShieldAlt, FaBars, FaSignOutAlt, FaTimes, FaImage } from 'react-icons/fa';
 
 type AdminHeaderProps = {
-  activePage: 'dashboard' | 'blog' | 'analytics' | 'security';
+  activePage: 'dashboard' | 'blog' | 'analytics' | 'security' | 'images';
 };
 
 export default function AdminHeader({ activePage }: AdminHeaderProps) {
@@ -49,6 +49,13 @@ export default function AdminHeader({ activePage }: AdminHeaderProps) {
             >
               <FaNewspaper size={14} />
               <span>Blog</span>
+            </Link>
+            <Link 
+              href="/admin/images" 
+              className={`flex items-center gap-2 px-3 py-1 rounded-md ${activePage === 'images' ? 'bg-accent text-primary' : 'hover:bg-secondary/50'}`}
+            >
+              <FaImage size={14} />
+              <span>Images</span>
             </Link>
             <Link 
               href="/admin/analytics" 
@@ -112,6 +119,14 @@ export default function AdminHeader({ activePage }: AdminHeaderProps) {
             >
               <FaNewspaper size={16} />
               <span>Blog</span>
+            </Link>
+            <Link 
+              href="/admin/images" 
+              className={`flex items-center gap-2 px-3 py-2 rounded-md ${activePage === 'images' ? 'bg-accent text-primary' : 'hover:bg-secondary/50'}`}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <FaImage size={16} />
+              <span>Images</span>
             </Link>
             <Link 
               href="/admin/analytics" 

@@ -20,13 +20,22 @@ interface RichTextEditorProps {
 
 export default function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image,
+      Image.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-lg',
+        },
+      }),
       Link.configure({
         openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-blue-500 hover:text-blue-600 underline',
+        },
       }),
       Placeholder.configure({
         placeholder: placeholder || 'Start writing your content here...',
@@ -48,23 +57,50 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
       return;
     }
 
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    const loadingToast = toast.loading('Uploading image...');
     try {
       const formData = new FormData();
       formData.append('file', file);
 
+      console.log('Sending upload request for file:', file.name, file.type, file.size);
+      
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      const responseData = await response.json();
+      
+      if (!response.ok) {
+        console.error('Upload response error:', response.status, responseData);
+        throw new Error(responseData.error || `Upload failed with status ${response.status}`);
+      }
 
-      const { url } = await response.json();
-      editor.chain().focus().setImage({ src: url }).run();
-      toast.success('Image uploaded successfully');
+      console.log('Upload response success:', responseData);
+      
+      editor
+        .chain()
+        .focus()
+        .setImage({ 
+          src: responseData.url,
+          alt: file.name,
+        })
+        .run();
+        
+      toast.success('Image uploaded successfully', {
+        id: loadingToast,
+      });
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image', {
+        id: loadingToast,
+      });
     }
   };
 
@@ -95,28 +131,31 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     }
   };
 
+  const setLink = () => {
+    if (linkUrl) {
+      editor.chain().focus().setLink({ href: linkUrl }).run();
+    } else {
+      editor.chain().focus().unsetLink().run();
+    }
+    setIsLinkModalOpen(false);
+    setLinkUrl('');
+  };
+
   return (
     <div 
-      className={`border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden relative ${
+      className={`border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden ${
         isDragging ? 'ring-2 ring-blue-500' : ''
       }`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {isDragging && (
-        <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center backdrop-blur-sm z-10">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-lg border border-blue-500">
-            <p className="text-blue-500 font-medium">Drop image here</p>
-          </div>
-        </div>
-      )}
       <div className="bg-white dark:bg-gray-800 p-3 border-b border-gray-300 dark:border-gray-600">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('bold') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('bold') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Bold"
           >
@@ -124,8 +163,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </button>
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('italic') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('italic') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Italic"
           >
@@ -133,8 +172,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </button>
           <button
             onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('bulletList') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('bulletList') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Bullet List"
           >
@@ -142,8 +181,8 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </button>
           <button
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('orderedList') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('orderedList') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Numbered List"
           >
@@ -151,69 +190,77 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
           </button>
           <button
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('blockquote') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('blockquote') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Quote"
           >
             <FaQuoteLeft />
           </button>
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1" />
           <button
-            onClick={() => {
-              const url = window.prompt('Enter link URL:');
-              if (url) {
-                editor.chain().focus().setLink({ href: url }).run();
-              }
-            }}
-            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-              editor.isActive('link') ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-white' : ''
+            onClick={() => setIsLinkModalOpen(true)}
+            className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
+              editor.isActive('link') ? 'bg-gray-200 dark:bg-gray-700' : ''
             }`}
             title="Add Link"
           >
             <FaLink />
           </button>
-          <label className="cursor-pointer">
+          <label className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer" title="Upload Image">
+            <FaImage />
             <input
               type="file"
               className="hidden"
               accept="image/*"
               onChange={handleFileInputChange}
             />
-            <div
-              className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 ${
-                isDragging ? 'bg-blue-100 dark:bg-blue-900/20' : ''
-              }`}
-              title="Add Image (Click or Drag & Drop)"
-            >
-              <FaImage />
-            </div>
           </label>
-          <div className="h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1" />
           <button
             onClick={() => editor.chain().focus().undo().run()}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40"
-            disabled={!editor.can().undo()}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             title="Undo"
           >
             <FaUndo />
           </button>
           <button
             onClick={() => editor.chain().focus().redo().run()}
-            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 disabled:opacity-40"
-            disabled={!editor.can().redo()}
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             title="Redo"
           >
             <FaRedo />
           </button>
         </div>
       </div>
-      <EditorContent 
-        editor={editor} 
-        className={`prose dark:prose-invert max-w-none p-4 min-h-[200px] focus:outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 ${
-          isDragging ? 'opacity-50' : ''
-        }`}
-      />
+
+      <EditorContent editor={editor} className="prose dark:prose-invert max-w-none p-4" />
+
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg">
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setIsLinkModalOpen(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={setLink}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

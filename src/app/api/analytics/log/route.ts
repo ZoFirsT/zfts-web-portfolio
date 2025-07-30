@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logVisit } from '@/lib/analytics';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Maximum request body size to avoid "packet length too long" errors
 const MAX_BODY_SIZE = 10 * 1024; // 10KB should be plenty for analytics data
 
@@ -66,35 +69,29 @@ export async function POST(request: NextRequest) {
 
 // For compatibility with GET requests
 export async function GET(request: NextRequest) {
-  // Extract the data from the request and create a manually formed payload
-  const url = new URL(request.url);
-  const path = url.pathname;
-  
-  // Prepare the analytics data
-  const analyticsData = {
-    ip: request.ip || request.headers.get('x-forwarded-for') || 'unknown',
-    path: path,
-    method: 'GET',
-    userAgent: request.headers.get('user-agent'),
-    referer: request.headers.get('referer')
-  };
-  
   try {
-    // Create a mock request object with the data we need
+    // Extract the data from the request URL instead of using the request object directly
+    const url = new URL(request.url);
+    const path = url.pathname;
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    const userAgent = request.headers.get('user-agent');
+    const referer = request.headers.get('referer');
+    
+    // Create a mock request object with the extracted data
     const mockRequest = {
-      ip: analyticsData.ip,
+      ip,
       headers: {
         get: (header: string) => {
-          if (header === 'user-agent') return analyticsData.userAgent;
-          if (header === 'referer') return analyticsData.referer;
-          if (header === 'x-forwarded-for') return analyticsData.ip;
+          if (header === 'user-agent') return userAgent;
+          if (header === 'referer') return referer;
+          if (header === 'x-forwarded-for') return ip;
           return null;
         }
       },
       nextUrl: {
-        pathname: analyticsData.path
+        pathname: path
       },
-      method: analyticsData.method
+      method: 'GET'
     };
     
     // Log the visit using our existing function

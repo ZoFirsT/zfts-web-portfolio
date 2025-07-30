@@ -139,6 +139,13 @@ export default function SecurityPage() {
                 <FaServer /> Analytics Dashboard
               </Link>
               
+              <Link
+                href="/security/docs"
+                className="flex items-center gap-2 px-3 py-2 bg-secondary/40 text-accent border border-accent/30 rounded hover:bg-secondary/60 transition-colors"
+              >
+                <FaShieldAlt /> Security Docs
+              </Link>
+              
               <button
                 className="flex items-center gap-2 px-3 py-2 bg-secondary/40 text-accent border border-accent/30 rounded hover:bg-secondary/60 transition-colors"
                 onClick={() => window.open('https://zfts-docs.com/security-best-practices', '_blank')}

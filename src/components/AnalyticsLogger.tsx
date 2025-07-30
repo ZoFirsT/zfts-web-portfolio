@@ -33,15 +33,28 @@ export default function AnalyticsLogger() {
           return;
         }
         
-        // Call the analytics API endpoint
-        await fetch('/api/analytics/log?' + new URLSearchParams({
-          _t: Date.now().toString() // Add cache-busting timestamp
-        }).toString(), {
-          method: 'GET',
+        // Prepare data for the API call
+        const path = analyticsData['x-analytics-path'];
+        const method = analyticsData['x-analytics-method'];
+        
+        // Call the analytics API endpoint using POST with data in the body
+        await fetch('/api/analytics/log', {
+          method: 'POST',
           headers: {
-            ...analyticsData,
             'Content-Type': 'application/json'
-          }
+          },
+          body: JSON.stringify({
+            path,
+            method,
+            timestamp: Date.now(),
+            // Add other analytics data
+            ...Object.fromEntries(
+              Object.entries(analyticsData).map(([key, value]) => [
+                key.replace('x-analytics-', ''),
+                value
+              ])
+            )
+          })
         });
       } catch (error) {
         // Silently fail to avoid impacting user experience

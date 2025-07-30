@@ -1,67 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendContactEmail } from '@/lib/email';
+import { withApiSecurity } from '@/lib/api-utils';
 
-// Simple rate limiting
-const RATE_LIMIT_DURATION = 60 * 1000; // 1 minute
-const emailRequests = new Map<string, number>();
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
 
-function isRateLimited(email: string): boolean {
-  const now = Date.now();
-  const lastRequest = emailRequests.get(email) || 0;
-  
-  if (now - lastRequest < RATE_LIMIT_DURATION) {
-    return true;
+async function handler(request: NextRequest) {
+  if (request.method !== 'POST') {
+    return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   }
-  
-  emailRequests.set(email, now);
-  return false;
-}
 
-export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { name, email, subject, message } = data;
-
-    // Check rate limiting
-    if (isRateLimited(email)) {
+    
+    // Validate required fields
+    if (!data.name || !data.email || !data.message) {
       return NextResponse.json(
-        { error: 'Please wait a minute before sending another message' },
-        { status: 429 }
-      );
-    }
-
-    // Validate input
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Name, email, and message are required' },
         { status: 400 }
       );
     }
-
-    // Validate email format
+    
+    // Simple email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(data.email)) {
       return NextResponse.json(
         { error: 'Invalid email address' },
         { status: 400 }
       );
     }
-
-    const result = await sendContactEmail({ name, email, subject, message });
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Failed to send email' },
-        { status: 500 }
-      );
-    }
-
+    
+    // Here you would normally send the email
+    // For now, we'll just simulate a successful response
+    console.log('Contact form submission:', data);
+    
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Contact form error:', error);
     return NextResponse.json(
-      { error: 'Failed to process request' },
+      { error: 'Failed to process contact form' },
       { status: 500 }
     );
   }
 }
+
+// Export the handler with rate limiting
+// Allow 5 submissions per hour per IP
+export const POST = withApiSecurity(handler, {
+  rateLimit: {
+    limit: 5,
+    windowMs: 60 * 60 * 1000 // 1 hour
+  }
+});

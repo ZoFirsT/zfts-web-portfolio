@@ -3,21 +3,28 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaEdit, FaTrash, FaPlus, FaEye, FaSpinner, FaTimes, FaImage } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus, FaEye, FaSpinner, FaTimes, FaImage, FaTags } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 import RichTextEditor from './RichTextEditor';
+import BlogTags from './BlogTags';
+
+type Tag = {
+  id: string;
+  name: string;
+};
 
 type BlogPost = {
   _id?: string;
   title: string;
-  excerpt: string;
   content: string;
   date: string;
-  readTime: string;
   slug: string;
-  coverImage: string;
   published: boolean;
+  tags: Tag[];
+  excerpt?: string;
+  readTime?: string;
+  coverImage?: string;
 };
 
 export default function BlogAdmin() {
@@ -28,13 +35,14 @@ export default function BlogAdmin() {
   const router = useRouter();
   const [currentPost, setCurrentPost] = useState<BlogPost>({
     title: '',
-    excerpt: '',
     content: '',
     date: new Date().toISOString(),
-    readTime: '5 min read',
     slug: '',
-    coverImage: '',
-    published: false
+    published: false,
+    tags: [],
+    excerpt: '',
+    readTime: '5 min read',
+    coverImage: ''
   });
   const [previewMode, setPreviewMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -169,7 +177,8 @@ export default function BlogAdmin() {
         readTime: '5 min read',
         slug: '',
         coverImage: '',
-        published: false
+        published: false,
+        tags: []
       });
     } catch (error) {
       console.error('Error saving post:', error);
@@ -260,16 +269,18 @@ export default function BlogAdmin() {
   };
 
   return (
-    <div className="w-full p-4 md:p-6 bg-white dark:bg-gray-900">
+    <div className="w-full p-4 md:p-6 bg-primary text-textPrimary">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 text-gray-900 dark:text-white">Blog Management</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-4">Blog Management</h1>
         <div className="flex flex-wrap gap-4 mb-6">
-          <button
+          <motion.button
             onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-2 px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent/90 transition-colors font-medium"
           >
             <FaPlus /> New Post
-          </button>
+          </motion.button>
         </div>
       </div>
 

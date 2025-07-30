@@ -8,6 +8,7 @@ interface BlogMetadataProps {
   url: string;
   image?: string;
   tags?: string[];
+  canonical?: string;
 }
 
 export default function BlogMetadata({
@@ -17,7 +18,8 @@ export default function BlogMetadata({
   date,
   url,
   image,
-  tags = []
+  tags = [],
+  canonical
 }: BlogMetadataProps) {
   useEffect(() => {
     // Update page metadata
@@ -73,7 +75,7 @@ export default function BlogMetadata({
       canonicalTag.rel = 'canonical';
       document.head.appendChild(canonicalTag);
     }
-    canonicalTag.setAttribute('href', url);
+    canonicalTag.setAttribute('href', canonical || url);
 
     // Update OpenGraph tags
     const ogTags = {

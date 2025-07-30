@@ -6,8 +6,17 @@ export async function GET(request: NextRequest) {
     const { db } = await connectToDatabase();
     const token = request.cookies.get('auth-token');
     
-    // If no auth token, only return published posts
-    const query = token ? {} : { published: true };
+    // Get query parameters
+    const url = new URL(request.url);
+    const tag = url.searchParams.get('tag');
+    
+    // Build query
+    let query: any = token ? {} : { published: true };
+    
+    // Add tag filter if provided
+    if (tag) {
+      query.tags = { $elemMatch: { name: tag } };
+    }
     
     const posts = await db.collection('posts')
       .find(query)
@@ -16,6 +25,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(posts);
   } catch (error) {
+    console.error('Error fetching blog posts:', error);
     return NextResponse.json(
       { error: 'Failed to fetch blog posts' },
       { status: 500 }
@@ -54,18 +64,25 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Create post object with all fields
     const post = {
-      ...data,
+      title: data.title,
+      content: data.content,
+      slug: data.slug.toLowerCase().trim(),
       date: new Date(),
       lastModified: new Date(),
-      slug: data.slug.toLowerCase().trim()
+      published: data.published || false,
+      tags: data.tags || [], // Add tags support
     };
     
     const result = await db.collection('posts').insertOne(post);
-    const createdPost = await db.collection('posts').findOne({ _id: result.insertedId });
     
-    return NextResponse.json(createdPost);
+    return NextResponse.json({
+      message: 'Post created successfully',
+      id: result.insertedId
+    });
   } catch (error) {
+    console.error('Error creating blog post:', error);
     return NextResponse.json(
       { error: 'Failed to create blog post' },
       { status: 500 }

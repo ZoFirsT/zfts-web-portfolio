@@ -138,6 +138,13 @@ export default function SecurityDashboard() {
         >
           Last Month
         </button>
+        
+        <Link
+          href="/security/docs"
+          className="ml-auto flex items-center gap-2 px-3 py-1 rounded-lg border border-accent/30 bg-secondary/30 text-accent hover:bg-secondary/50 transition-colors"
+        >
+          <FaShieldAlt size={14} /> Security Docs
+        </Link>
       </div>
       
       {/* Loading State */}

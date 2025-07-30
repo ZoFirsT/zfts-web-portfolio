@@ -18,6 +18,21 @@ export type VisitLogEntry = {
   sessionId?: string;
 };
 
+// Types for blog view analytics
+export type BlogViewEntry = {
+  ip: string | null;
+  userAgent: string | null;
+  slug: string;
+  title: string;
+  timestamp: Date;
+  readTime?: string;
+  referer: string | null;
+  device?: string;
+  browser?: string;
+  os?: string;
+  sessionId?: string;
+};
+
 export type DDoSLogEntry = {
   ip: string | null;
   timestamp: Date;
@@ -66,6 +81,49 @@ export async function logVisit(request: NextRequest): Promise<void> {
     await checkForDDoS(ip, path, db);
   } catch (error) {
     console.error('Failed to log visit:', error);
+  }
+}
+
+/**
+ * Log a blog post view with additional tracking information
+ */
+export async function logBlogView(slug: string, title: string, readTime?: string, request?: NextRequest): Promise<void> {
+  try {
+    const { db } = await connectToDatabase();
+    
+    // Extract basic data from request or use defaults if not provided
+    const ip = request?.ip ?? request?.headers.get('x-forwarded-for') ?? 'unknown';
+    const userAgent = request?.headers.get('user-agent') ?? 'unknown';
+    const referer = request?.headers.get('referer') ?? null;
+    
+    // Simple device/browser/os detection
+    const device = getDeviceInfo(userAgent);
+    const browser = getBrowserInfo(userAgent);
+    const os = getOSInfo(userAgent);
+    
+    // Create blog view log entry
+    const blogViewLog: BlogViewEntry = {
+      ip,
+      userAgent,
+      slug,
+      title,
+      readTime,
+      referer,
+      timestamp: new Date(),
+      device,
+      browser,
+      os
+    };
+    
+    // Store in database
+    await db.collection('analytics_blog_views').insertOne(blogViewLog);
+    
+    // Also log as a general visit
+    if (request) {
+      await logVisit(request);
+    }
+  } catch (error) {
+    console.error('Failed to log blog view:', error);
   }
 }
 
@@ -340,4 +398,104 @@ function getOSInfo(userAgent: string | null): string {
   if (userAgent.indexOf('Android') > -1) return 'Android';
   if (userAgent.indexOf('iOS') > -1 || userAgent.indexOf('iPhone') > -1 || userAgent.indexOf('iPad') > -1) return 'iOS';
   return 'unknown';
+}
+
+/**
+ * Get blog view analytics data
+ */
+export async function getBlogViewAnalytics(timeRange: string = '30d'): Promise<any> {
+  try {
+    const { db } = await connectToDatabase();
+    const now = new Date();
+    
+    // Calculate time range
+    let startDate;
+    switch (timeRange) {
+      case '1h':
+        startDate = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'all':
+        startDate = new Date(0); // Beginning of time
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Default to 30 days
+    }
+    
+    // Get total blog views in time range
+    const totalBlogViews = await db.collection('analytics_blog_views').countDocuments({
+      timestamp: { $gte: startDate }
+    });
+    
+    // Get unique visitors (by IP)
+    const uniqueVisitorsResult = await db.collection('analytics_blog_views').aggregate([
+      { $match: { timestamp: { $gte: startDate } } },
+      { $group: { _id: '$ip' } },
+      { $count: 'count' }
+    ]).toArray();
+    const uniqueVisitors = uniqueVisitorsResult[0]?.count || 0;
+    
+    // Get top blog posts
+    const topPostsResult = await db.collection('analytics_blog_views').aggregate([
+      { $match: { timestamp: { $gte: startDate } } },
+      { $group: { _id: '$slug', title: { $first: '$title' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+      { $project: { _id: 0, slug: '$_id', title: 1, count: 1 } }
+    ]).toArray();
+    
+    // Get views by day for the time period
+    const viewsByDayResult = await db.collection('analytics_blog_views').aggregate([
+      { $match: { timestamp: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$timestamp' },
+            month: { $month: '$timestamp' },
+            day: { $dayOfMonth: '$timestamp' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: {
+                $dateFromParts: {
+                  year: '$_id.year',
+                  month: '$_id.month',
+                  day: '$_id.day'
+                }
+              }
+            }
+          },
+          count: 1
+        }
+      }
+    ]).toArray();
+    
+    return {
+      totalBlogViews,
+      uniqueVisitors,
+      topPosts: topPostsResult,
+      viewsByDay: viewsByDayResult,
+      timeRange,
+      timestamp: new Date()
+    };
+  } catch (error) {
+    console.error('Failed to get blog view analytics:', error);
+    throw error;
+  }
 }

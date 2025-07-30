@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadFileToS3 } from '@/lib/s3';
-import { uploadLocal } from '@/lib/storage';
+import { uploadToCloudinary, deleteFromCloudinary } from '@/lib/cloudinary';
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import { mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
 
 const secretKey = process.env.JWT_SECRET || 'your-secret-key';
 const key = new TextEncoder().encode(secretKey);
 
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'blog-images');
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp'
+];
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,18 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Ensure upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      try {
-        await mkdir(UPLOAD_DIR, { recursive: true });
-      } catch (err) {
-        console.error('Failed to create upload directory:', err);
-        return NextResponse.json({ 
-          error: 'Server configuration error, please contact administrator' 
-        }, { status: 500 });
-      }
-    }
-
     const formData = await request.formData();
     const file = formData.get('file') as any;
 
@@ -45,24 +35,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Check file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 });
+    // Validate file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Only JPEG, PNG, GIF and WebP are supported' },
+        { status: 400 }
+      );
     }
 
-    // Get file extension and generate unique name
-    const fileType = file.type.split('/')[1];
-    const fileName = `blog-images/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileType}`;
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File size must be less than 5MB' },
+        { status: 400 }
+      );
+    }
 
-    // Always use local storage for now since S3 is not configured
     try {
-      const result = await uploadLocal(file, fileName);
+      const result = await uploadToCloudinary(file);
       return NextResponse.json({ 
         ...result,
-        message: 'Image uploaded and optimized successfully'
+        message: 'Image uploaded successfully'
       });
     } catch (error) {
-      console.error('Error handling file upload:', error);
+      console.error('Error uploading to Cloudinary:', error);
       return NextResponse.json(
         { error: error instanceof Error ? error.message : 'Failed to upload file' },
         { status: 500 }
@@ -72,6 +68,44 @@ export async function POST(request: NextRequest) {
     console.error('Error in upload handler:', error);
     return NextResponse.json(
       { error: 'Failed to process upload request' },
+      { status: 500 }
+    );
+  }
+}
+
+// Handle image deletion
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check authentication
+    const authToken = cookies().get('auth-token');
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+      await jwtVerify(authToken.value, key);
+    } catch (error) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { publicId } = await request.json();
+    if (!publicId) {
+      return NextResponse.json({ error: 'No public ID provided' }, { status: 400 });
+    }
+
+    const success = await deleteFromCloudinary(publicId);
+    if (success) {
+      return NextResponse.json({ message: 'Image deleted successfully' });
+    } else {
+      return NextResponse.json(
+        { error: 'Failed to delete image' },
+        { status: 500 }
+      );
+    }
+  } catch (error) {
+    console.error('Error in delete handler:', error);
+    return NextResponse.json(
+      { error: 'Failed to process delete request' },
       { status: 500 }
     );
   }

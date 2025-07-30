@@ -21,8 +21,8 @@ export default function Home() {
   return (
     <div className="bg-primary text-white dark:bg-slate-900 h-screen snap-y snap-mandatory overflow-y-scroll overflow-x-hidden z-0 scrollbar scrollbar-track-primary/20 scrollbar-thumb-accent/80">
       <Header />
-      <LanguageSelector />
-      <ThemeToggle />
+      {/* <LanguageSelector /> */}
+      {/* <ThemeToggle /> */}
 
       <section id="hero" className="snap-start">
         <Hero />
@@ -40,9 +40,9 @@ export default function Home() {
         <Skills />
       </section>
 
-      <section id="projects" className="snap-start">
+      {/* <section id="projects" className="snap-start">
         <Projects />
-      </section>
+      </section> */}
 
       <section id="timeline" className="snap-start">
         <Timeline />

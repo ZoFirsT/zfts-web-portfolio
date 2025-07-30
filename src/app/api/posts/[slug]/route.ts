@@ -93,14 +93,21 @@ export async function PUT(
     }
     
     // Extract only the fields we want to update
-    const updateData = {
+    const updateData: any = {
       title: data.title,
       content: data.content,
       slug: data.slug.toLowerCase().trim(),
       lastModified: new Date(),
       // Preserve published state if it exists in the data
-      ...(typeof data.published !== 'undefined' && { published: data.published })
+      published: typeof data.published === 'boolean' ? data.published : undefined,
+      // Add support for tags
+      tags: Array.isArray(data.tags) ? data.tags : [],
     };
+
+    // Handle optional fields
+    if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
+    if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
+    if (data.readTime !== undefined) updateData.readTime = data.readTime;
 
     const result = await db.collection('posts').updateOne(
       { slug: params.slug },

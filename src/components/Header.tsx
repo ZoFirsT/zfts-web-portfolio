@@ -27,7 +27,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   return (
-    <header className="sticky top-0 p-5 flex items-start justify-between max-w-7xl mx-auto z-20 xl:items-center backdrop-blur-sm bg-primary/70 dark:bg-slate-900/70">
+    <header className="sticky top-0 p-5 flex items-start justify-between max-w-7xl mx-auto z-20 xl:items-center ">
       <motion.div
         initial={{
           x: -500,
@@ -69,7 +69,7 @@ export default function Header() {
         <NavLink href="#about">About</NavLink>
         <NavLink href="#experience">Experience</NavLink>
         <NavLink href="#skills">Skills</NavLink>
-        <NavLink href="#projects">Projects</NavLink>
+        {/* <NavLink href="#projects">Projects</NavLink> */}
         <NavLink href="#blog">Blog</NavLink>
         <NavLink href="#security-tools">Security</NavLink>
       </motion.nav>
@@ -107,7 +107,7 @@ export default function Header() {
               <MobileNavLink href="#about" onClick={() => setIsMenuOpen(false)}>About</MobileNavLink>
               <MobileNavLink href="#experience" onClick={() => setIsMenuOpen(false)}>Experience</MobileNavLink>
               <MobileNavLink href="#skills" onClick={() => setIsMenuOpen(false)}>Skills</MobileNavLink>
-              <MobileNavLink href="#projects" onClick={() => setIsMenuOpen(false)}>Projects</MobileNavLink>
+              {/* <MobileNavLink href="#projects" onClick={() => setIsMenuOpen(false)}>Projects</MobileNavLink> */}
               <MobileNavLink href="#timeline" onClick={() => setIsMenuOpen(false)}>Timeline</MobileNavLink>
               <MobileNavLink href="#blog" onClick={() => setIsMenuOpen(false)}>Blog</MobileNavLink>
               <MobileNavLink href="#security-tools" onClick={() => setIsMenuOpen(false)}>Security</MobileNavLink>

@@ -28,17 +28,19 @@ export default function About() {
 
       <div className="space-y-10 px-0 md:px-10">
         <h4 className="text-4xl font-semibold">
-          Here's a{" "}
-          <span className="underline decoration-accent/50">little</span>{" "}
-          background
+          Senior Full Stack Developer &{" "}
+          <span className="underline decoration-accent/50">CloudOps</span>{" "}
+          Engineer
         </h4>
         <p className="text-base text-textSecondary">
-          I am currently pursuing a Bachelor's degree in Information and Communication Technology at Mahidol University (MU). 
-          With a strong foundation in Full-Stack Development, Cloud DevOps, and emerging technologies, I bring a unique blend 
-          of academic excellence and practical experience. At StratusOne Co., Ltd, I've led development teams and implemented 
-          cloud infrastructure using modern tools like Terraform, Docker, and Kubernetes. My expertise spans across cloud platforms 
-          (AWS, GCP, Azure) and I'm particularly skilled in automation, CI/CD implementation, and optimizing cloud resources. 
-          I'm passionate about creating innovative solutions that combine technical excellence with practical business value.
+          With 5+ years of comprehensive expertise in modern web development and cloud infrastructure, I specialize in 
+          JavaScript and TypeScript ecosystems with demonstrated proficiency across the entire technology stack. My experience 
+          spans advanced frontend development with Next.js, React, and Vue.js, robust backend development with Node.js and Express, 
+          and proven expertise in multi-cloud environments (AWS, GCP, Azure). At StratusOne Co., Ltd, I successfully led 
+          cross-functional development teams while architecting enterprise-level cloud infrastructure solutions using Terraform, 
+          Docker, and Kubernetes. I'm passionate about bridging technical innovation with business objectives, consistently 
+          delivering scalable solutions that optimize performance, reduce costs, and create practical business value through 
+          automation, CI/CD implementation, and continuous learning.
         </p>
       </div>
     </motion.div>
